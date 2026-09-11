@@ -49,10 +49,22 @@ src/
 
 Adding Phase 2/3 programming means editing `data/program.ts` only: add plans to `PLANS` and point the phase `schedule` at them.
 
+## Cloud backup setup
+
+Cloud backup is off by default — the app is fully usable with no account, everything stored only in this browser's IndexedDB. To turn it on (recommended, so a lost/wiped phone doesn't lose your data):
+
+1. Create a free project at [supabase.com](https://supabase.com) (no credit card required at this scale).
+2. In the new project, open **SQL Editor → New query**, paste in the contents of [`supabase/schema.sql`](supabase/schema.sql), and run it. This creates one table (`sync_docs`) and a Row Level Security policy that keeps each signed-in user's rows visible only to them — that policy is the actual security boundary, not secrecy of any key.
+3. In **Project Settings → API**, copy the **Project URL** and the **anon public** key (not the `service_role` key — never put that one in client code).
+4. Paste those two values into `src/sync/supabaseConfig.ts` (`SUPABASE_URL` and `SUPABASE_ANON_KEY`). This file is safe to commit — the anon key is meant to be public; Supabase's default new-project setting requires email confirmation on sign-up, which you can turn off in **Authentication → Providers → Email** for a single-user app if you don't want the extra step.
+5. Commit, push, redeploy. The app will now show a sign-in screen (email + password) before onboarding — create an account there. Every workout, weigh-in, food entry and step count then backs up automatically, and the Home screen's backup line shows `Backup on` once a write is verified.
+
+Photos are never uploaded (too large for this to be worth it) — they stay device-local, same as before.
+
 ## Privacy and backup
 
-When the app runs inside the claude.ai artifact viewer it mirrors workouts, weights, food, steps and settings to that artifact's private document store (`src/sync/`), so Safari clearing the embedded page's storage does not lose anything. Photos are not mirrored. On any other host the sync engine is off and everything stays in the browser; `src/sync/backend.ts` is the interface to implement for another cloud store.
+With cloud backup configured (above), the app mirrors workouts, weights, food, steps and settings to your own Supabase project (`src/sync/`), scoped to your account, so clearing Safari's local data or losing the phone doesn't lose anything. Without it, everything stays in the browser only; `src/sync/backend.ts` is the interface to implement for a different cloud store.
 
-Weights, workouts and photos never leave the phone otherwise. Use **Settings → Export backup** to save a JSON copy before changing phones (photos are not included in the export yet).
+Either way, use **Settings → Copy backup** (clipboard) or **Export backup** (JSON file) as an extra manual safety net before changing phones — photos aren't included in either backup yet.
 
 This app is not medical advice.

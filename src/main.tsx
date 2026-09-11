@@ -4,14 +4,11 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import './styles/global.css';
 import { sync } from './sync/engine';
-import { createClaudeBackend, hasClaudeRuntime } from './sync/claudeBackend';
+import { supabaseConfigured } from './sync/supabaseBackend';
 
-// Cloud backup: only when a host provides a document store (claude.ai artifact viewer).
-void (async () => {
-  const runtime = hasClaudeRuntime();
-  const backend = runtime ? await createClaudeBackend() : null;
-  await sync.start(backend, runtime ? 'claude.ai did not grant the storage capability to this view' : 'not running inside the claude.ai app');
-})();
+// Cloud backup: App.tsx starts the real backend once sign-in resolves. Set the
+// honest "off" state immediately so the banner never sits blank while that loads.
+if (!supabaseConfigured()) void sync.start(null, 'Cloud backup not set up yet (see README)');
 
 // The single-file build (Artifact / file hosting) has no service worker to register.
 if (!import.meta.env.VITE_SINGLE_FILE) registerSW({ immediate: true });

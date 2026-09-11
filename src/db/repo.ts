@@ -1,5 +1,6 @@
 import { EXERCISE_MAP } from '../data/exercises';
 import { resolveExercise } from '../data/program';
+import { liftingBurnForExercise } from '../lib/burn';
 import { programPosition } from '../lib/schedule';
 import { newId } from '../lib/ids';
 import { todayISO } from '../lib/dates';
@@ -182,6 +183,65 @@ export async function deleteSession(sessionId: string): Promise<void> {
 export async function listCompletedSessions(): Promise<WorkoutSession[]> {
   const all = await db.sessions.where('status').equals('completed').toArray();
   return all.sort((a, b) => b.startTime - a.startTime);
+}
+
+/**
+ * Record a workout that already happened but was never logged (backfill after a
+ * missed day, a wipe, or a forgotten entry). There is no real set-by-set timing to
+ * work from, so `liftingBurnForExercise` falls back to its typical work+rest
+ * estimate per set (the same fallback it uses for any set with no `completedAt`).
+ */
+export async function logPastWorkout(input: { date: string; title: string; exercises: { exerciseId: string; sets: { weight: number; reps: number }[] }[]; weightKg: number }): Promise<WorkoutSession> {
+  const sessionId = newId();
+  const now = Date.now();
+  const allSets: ExerciseSet[] = [];
+  const exercises: SessionExercise[] = [];
+  let liftingKcal = 0;
+  let estSeconds = 0;
+  for (const ex of input.exercises) {
+    if (!ex.sets.length) continue;
+    const def = EXERCISE_MAP[ex.exerciseId];
+    const exSets: ExerciseSet[] = ex.sets.map((s, i) => ({
+      id: newId(),
+      sessionId,
+      exerciseId: ex.exerciseId,
+      date: input.date,
+      setNumber: i + 1,
+      weight: s.weight,
+      reps: s.reps,
+      completed: true,
+      updatedAt: now,
+    }));
+    allSets.push(...exSets);
+    liftingKcal += liftingBurnForExercise(def, exSets, input.weightKg);
+    estSeconds += ex.sets.length * (40 + (def?.restSeconds ?? 90));
+    const reps = ex.sets.map((s) => s.reps);
+    exercises.push({ exerciseId: ex.exerciseId, prescription: { sets: ex.sets.length, repMin: Math.min(...reps), repMax: Math.max(...reps) }, completed: true });
+  }
+  const startTime = new Date(`${input.date}T12:00:00`).getTime();
+  const session: WorkoutSession = {
+    id: sessionId,
+    date: input.date,
+    workoutType: 'optional',
+    planId: 'manual',
+    title: input.title || 'Logged workout',
+    phase: 1,
+    week: 1,
+    startTime,
+    endTime: startTime + estSeconds * 1000,
+    status: 'completed',
+    exercises,
+    completedExercises: exercises.map((e) => e.exerciseId),
+    caloriesBurned: Math.round(liftingKcal),
+    burnLifting: Math.round(liftingKcal),
+    burnCardio: 0,
+    updatedAt: now,
+  };
+  await db.transaction('rw', db.sessions, db.sets, async () => {
+    await db.sessions.put(session);
+    if (allSets.length) await db.sets.bulkPut(allSets);
+  });
+  return session;
 }
 
 // ---------------------------------------------------------------- sets

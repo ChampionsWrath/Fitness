@@ -85,7 +85,7 @@ export class SyncEngine {
   }
 
   /** Attach a backend (or null) and perform the initial restore. */
-  async start(backend: SyncBackend | null, offReason = 'Not running inside the claude.ai app'): Promise<void> {
+  async start(backend: SyncBackend | null, offReason = 'Cloud backup not set up'): Promise<void> {
     this.backend = backend;
     if (!backend) {
       this.set({ state: 'off', reason: offReason });
@@ -123,6 +123,12 @@ export class SyncEngine {
   stop() {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    if (this.timer) {
+      window.clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.dirty = false;
+    this.lastPushed.clear();
   }
 
   private schedulePush(delayMs?: number) {

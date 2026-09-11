@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
+import { useAuth } from './hooks/useAuth';
 import { useProfile, useTheme } from './hooks/useProfile';
 import { useSyncStatus } from './hooks/useSync';
 import { SyncBanner } from './components/SyncBanner';
 import { useRoute } from './hooks/useRoute';
+import { sync } from './sync/engine';
+import { SupabaseBackend } from './sync/supabaseBackend';
 import { ActiveWorkout } from './screens/ActiveWorkout';
 import { ExerciseLibrary, ExercisePage } from './screens/ExerciseLibrary';
 import { History, SessionDetail } from './screens/History';
@@ -11,6 +14,8 @@ import { FoodTab } from './screens/FoodTab';
 import { FoodTargets } from './screens/FoodTargets';
 import { Home } from './screens/Home';
 import { IntervalGuide } from './screens/IntervalGuide';
+import { LogPastWorkout } from './screens/LogPastWorkout';
+import { Login } from './screens/Login';
 import { Onboarding } from './screens/Onboarding';
 import { Photos } from './screens/Photos';
 import { ProgressTab } from './screens/ProgressTab';
@@ -20,6 +25,7 @@ import { WorkoutTab } from './screens/WorkoutTab';
 
 export default function App() {
   const profile = useProfile();
+  const auth = useAuth();
   const syncStatus = useSyncStatus();
   const { parts, navigate, back } = useRoute();
   useTheme(profile?.theme);
@@ -28,7 +34,19 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [parts.join('/')]);
 
+  useEffect(() => {
+    if (!auth.configured || auth.loading) return;
+    sync.stop();
+    void sync.start(auth.session ? new SupabaseBackend(auth.session.user.id) : null, auth.session ? undefined : 'Not signed in');
+  }, [auth.configured, auth.loading, auth.session?.user.id]);
+
   if (parts[0] === 'figures') return <div className="app"><FigureGallery onBack={() => navigate('/exercises')} /></div>;
+  // Cloud backup is configured: require sign-in before anything else so a
+  // profile is always backed up to its owner's account, never anonymous.
+  if (auth.configured) {
+    if (auth.loading) return <div className="app" />;
+    if (!auth.session) return <div className="app"><Login /></div>;
+  }
   if (profile === undefined) return <div className="app" />;
   // Hold the onboarding screen back while a cloud restore is in flight.
   if (!profile && syncStatus.state === 'checking')
@@ -56,6 +74,7 @@ export default function App() {
     case 'progress':
       if (a === 'weight') screen = <WeightTracker profile={profile} onBack={() => navigate('/progress')} />;
       else if (a === 'photos') screen = <Photos profile={profile} onBack={() => navigate('/progress')} />;
+      else if (a === 'history' && b === 'new') screen = <LogPastWorkout profile={profile} onBack={() => navigate('/progress/history')} />;
       else if (a === 'history' && b) screen = <SessionDetail id={b} profile={profile} onBack={() => navigate('/progress/history')} justFinished={c === 'done'} />;
       else if (a === 'history') screen = <History profile={profile} onBack={() => navigate('/progress')} />;
       else screen = <ProgressTab profile={profile} />;

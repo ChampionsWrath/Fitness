@@ -1,7 +1,7 @@
 /**
  * Minimal document-store interface the sync engine talks to. A backend
- * stores plain JSON documents under `collection/id`. Implementations:
- * the claude.ai artifact `db` capability today; any hosted store later.
+ * stores plain JSON documents under `collection/id`. Implementation:
+ * Supabase (`SupabaseBackend`); swap in a different one here if needed later.
  */
 export type SyncDoc = Record<string, unknown>;
 

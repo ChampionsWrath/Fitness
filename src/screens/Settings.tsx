@@ -4,8 +4,10 @@ import { DISCLAIMER } from '../data/disclaimer';
 import { exportAll, importAll, resetAll, saveProfile } from '../db/repo';
 import { waistUnit } from '../lib/units';
 import { ALL_EQUIPMENT, type Equipment, type ThemePreference, type UserProfile } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import { useSyncStatus } from '../hooks/useSync';
 import { sync } from '../sync/engine';
+import { getSupabase } from '../sync/supabaseBackend';
 
 export function Settings({ profile, onBack }: { profile: UserProfile; onBack: () => void }) {
   const [p, setP] = useState<UserProfile>(profile);
@@ -13,6 +15,7 @@ export function Settings({ profile, onBack }: { profile: UserProfile; onBack: ()
   const [confirmReset, setConfirmReset] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const syncStatus = useSyncStatus();
+  const auth = useAuth();
   const [inspect, setInspect] = useState<{ name: string; local: number; remote: number }[] | null>(null);
   const [copied, setCopied] = useState('');
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -171,7 +174,7 @@ export function Settings({ profile, onBack }: { profile: UserProfile; onBack: ()
             <div className="notice" style={{ marginBottom: 12 }}>
               <b>Cloud backup: {syncStatus.state === 'error' ? 'FAILED' : !syncStatus.verified ? 'unverified' : syncStatus.state === 'syncing' || syncStatus.pending ? 'saving…' : 'on and verified'}</b> ({syncStatus.backend})
               <div className="tiny" style={{ marginTop: 4 }}>
-                Workouts, weights, food and steps are saved privately to your claude.ai account and restored when you open the app, even if Safari clears local data. Photos stay on this phone only.
+                Workouts, weights, food and steps are saved privately to your account and restored on any device you sign in on, even if Safari clears local data. Photos stay on this phone only.
                 {syncStatus.lastPush && ` Last saved ${new Date(syncStatus.lastPush).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`}
                 {syncStatus.error && ` ${syncStatus.error}`}
               </div>
@@ -196,6 +199,24 @@ export function Settings({ profile, onBack }: { profile: UserProfile; onBack: ()
                   </tbody>
                 </table>
               )}
+            </div>
+          )}
+          {auth.configured && auth.session && (
+            <div className="card flat" style={{ marginBottom: 12 }}>
+              <b>Account</b>
+              <p className="small muted" style={{ margin: '4px 0 10px' }}>
+                Signed in as {auth.session.user.email}.
+              </p>
+              <Button
+                variant="secondary"
+                full
+                onClick={async () => {
+                  await getSupabase().auth.signOut();
+                  window.location.hash = '#/';
+                }}
+              >
+                Sign out
+              </Button>
             </div>
           )}
           <div className="row">

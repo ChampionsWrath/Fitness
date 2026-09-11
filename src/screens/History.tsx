@@ -34,7 +34,15 @@ export function History({ profile, onBack }: { profile: UserProfile; onBack: () 
 
   return (
     <>
-      <Screen title="History" onBack={onBack}>
+      <Screen
+        title="History"
+        onBack={onBack}
+        right={
+          <a href="#/progress/history/new" className="icon-btn" aria-label="Log a past workout">
+            <Icon name="plus" />
+          </a>
+        }
+      >
         {sessions.length ? (
           <div className="list">
             {sessions.map((s) => {

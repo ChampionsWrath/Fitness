@@ -8,7 +8,7 @@ export function SyncBanner() {
   return (
     <div className="sync-banner" role="alert">
       <span className="grow">
-        <b>Backup failed.</b> {s.error ?? 'Could not save to claude.ai.'}
+        <b>Backup failed.</b> {s.error ?? 'Could not save to the cloud.'}
       </span>
       <button onClick={() => void sync.flush(true)}>Retry</button>
     </div>
