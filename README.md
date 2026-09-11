@@ -49,6 +49,12 @@ src/
 
 Adding Phase 2/3 programming means editing `data/program.ts` only: add plans to `PLANS` and point the phase `schedule` at them.
 
+## Wristband firmware
+
+`firmware/` holds the Arduino sketches for the companion BLE wristband (Seeed
+XIAO nRF52840 Sense). See `firmware/README.md` for toolchain setup and
+`CLAUDE.md` for the hardware decisions and milestone sequence.
+
 ## Cloud backup setup
 
 Cloud backup is off by default — the app is fully usable with no account, everything stored only in this browser's IndexedDB. To turn it on (recommended, so a lost/wiped phone doesn't lose your data):
