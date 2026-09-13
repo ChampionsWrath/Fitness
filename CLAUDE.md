@@ -179,6 +179,23 @@ smallest-step-first rule as everything else here.
   4. A relay running wherever the code session lives (e.g. the Windows
      laptop) picks up the message and feeds it into a real, running Claude
      Code session; the response relays back the same path.
+  5. **User requirement: responses come back in the same format they were
+     given in** — a voice question gets a voice answer, for fast back-and-forth
+     without looking at a screen. The phone speaks the returned text aloud via
+     text-to-speech and plays it through its own speaker or whatever it's
+     paired to (AirPods, car Bluetooth, etc.) — the band has no speaker, so
+     audio never comes from the band itself, only the phone end. This half is
+     the easy one: unlike speech *recognition*, speech *synthesis* has always
+     worked in Safari (`speechSynthesis`, part of the Web Speech API) — it
+     doesn't strictly need the Capacitor wrap the way step 2's on-device STT
+     does, though the rest of this pipeline requires it regardless.
+
+  Button hardware note: a standard 4-pin 6mm momentary tactile switch is the
+  right part — no external pull-up/pull-down needed, the nRF52840 has
+  internal pull-ups settable in firmware (one leg to GND, the other to a GPIO
+  pin in `INPUT_PULLUP` mode). Since this lives on a wrist during workouts,
+  prefer one with some sweat/moisture resistance if easy to find, though not
+  a hard requirement.
 
   Open question, needs research before designing further — do not assume:
   is there a supported way to inject a message into an *already-running*
