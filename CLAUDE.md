@@ -142,6 +142,70 @@ Additive only — nothing existing should move or break:
 7. Workout linkage + sleep stages: attach HR to sessions by time window, then
    the sleep-stage heuristic (clearly labeled as an estimate in the UI).
 
+## Extensions beyond the core plan (confirmed wanted, not yet scheduled)
+These build on the BLE work in milestone 2+ and the Capacitor native shell
+(already required for BLE on iOS regardless). Do not start any of this before
+milestone 1 — ideally 2–3 — are proven on real hardware. Same
+smallest-step-first rule as everything else here.
+
+- **Music control (play/pause/next/prev/volume) from the band.** Use the
+  standard BLE "HID over GATT" Consumer Control profile — the same mechanism
+  generic Bluetooth camera-shutter remotes use. iOS treats it as a normal
+  Bluetooth accessory (pairs in iOS Settings, no app needs to be open). Open
+  question for when we get there: whether the nRF52840 can run this standard
+  HID connection *at the same time* as the custom GATT service used for
+  fitness data (multi-role BLE) — Nordic's stack is supposed to support it,
+  unconfirmed until it's actually being coded.
+
+- **Hands-free voice control of live Claude Code sessions, via a dedicated
+  physical button on the band.** Motivation: many concurrent projects, hands
+  busy tinkering while building, doesn't want to type constantly, wants to
+  talk once building starts. Needs a physical momentary pushbutton wired to a
+  GPIO pin — **not yet ordered**; cheap and simple, no risk of ordering the
+  wrong variant (unlike the sensor parts), fine to add to a future order any
+  time before this work starts.
+
+  Realistic architecture (needs Capacitor, which BLE already requires):
+  1. Band: button press sends a BLE command to the phone.
+  2. Phone (Capacitor app, can run this in the background): starts recording
+     via its own mic, transcribes on-device via Apple's `SFSpeechRecognizer`
+     (free, private, no cloud STT needed — only reachable once natively
+     wrapped; Safari's web Speech Recognition API doesn't exist on iOS, so a
+     home-screen PWA could never do this part).
+  3. Transcribed text relays to wherever the actual coding session lives, via
+     the same Supabase account already used for cloud backup (its realtime
+     feature works for this — small text payloads, not audio, so bandwidth is
+     a non-issue, unlike streaming raw mic audio over BLE would be).
+  4. A relay running wherever the code session lives (e.g. the Windows
+     laptop) picks up the message and feeds it into a real, running Claude
+     Code session; the response relays back the same path.
+
+  Open question, needs research before designing further — do not assume:
+  is there a supported way to inject a message into an *already-running*
+  Claude Code session remotely, versus needing a fresh API call each time?
+
+  This is a distinct project layered on top of the wristband, not a
+  wristband feature per se — treat it as its own milestone track once the
+  core steps/BLE/HR milestones are proven, not before.
+
+- **Band-only remote connectivity with no phone present at all** (e.g.
+  reaching the home laptop while out, without carrying a phone) — **confirmed
+  NOT possible with the hardware already ordered.** The nRF52840 has no WiFi
+  or cellular radio at the silicon level; this is not a firmware limitation,
+  there is nothing to code around it. The band can only ever reach the
+  internet by relaying through a nearby phone over BLE. If this is ever
+  wanted for real, it needs different/additional hardware entirely (e.g. a
+  WiFi module like an ESP32, or a cellular modem + carrier plan) — a separate
+  hardware project, not an extension of the current board.
+
+- **Real phone call audio through the band** — ruled out, not just deferred.
+  The nRF52840 only implements Bluetooth Low Energy; phone call audio needs
+  Bluetooth Classic (Hands-Free Profile), a different radio protocol this
+  chip doesn't support, and there's no speaker or mic input path for calls in
+  this hardware anyway (the Sense variant's mic is PDM digital audio for
+  general capture, not wired into any call-audio path). Would need different
+  hardware, a different project.
+
 ## Ground rules for whoever picks this up
 - This is an explicit learning project for someone with zero prior electronics
   experience. Explain hardware terms on first use (what a pull-up resistor is,
